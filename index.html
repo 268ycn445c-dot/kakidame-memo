@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>書きためノート</title>
+<style>
+  :root {
+    --bg: #f7f2ea;
+    --surface: #ffffff;
+    --surface-2: #fbf7f0;
+    --ink: #2b2621;
+    --ink-soft: #756b5d;
+    --accent: #5f7a5b;
+    --accent-ink: #3e5a3b;
+    --accent-soft: #e7ede3;
+    --border: #e6ddcc;
+    --shadow: 0 1px 2px rgba(43, 38, 33, 0.04), 0 8px 24px rgba(43, 38, 33, 0.05);
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1f1d19;
+      --surface: #262420;
+      --surface-2: #2b2822;
+      --ink: #f1ece1;
+      --ink-soft: #b3a996;
+      --accent: #93b48a;
+      --accent-ink: #c3dabc;
+      --accent-soft: #303a2c;
+      --border: #3a352c;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #1f1d19;
+    --surface: #262420;
+    --surface-2: #2b2822;
+    --ink: #f1ece1;
+    --ink-soft: #b3a996;
+    --accent: #93b48a;
+    --accent-ink: #c3dabc;
+    --accent-soft: #303a2c;
+    --border: #3a352c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+
+  .wrap {
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 5rem;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+
+  .topbar .email { font-size: 0.8rem; }
+
+  .eyebrow {
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    color: var(--accent-ink);
+    font-weight: 600;
+    margin: 0 0 0.35rem;
+  }
+
+  h1 {
+    font-family: "Zen Maru Gothic", "Noto Sans JP", sans-serif;
+    font-weight: 700;
+    font-size: 1.65rem;
+    margin: 0 0 0.5rem;
+    text-wrap: balance;
+  }
+
+  .lede {
+    color: var(--ink-soft);
+    margin: 0 0 2rem;
+    font-size: 0.95rem;
+  }
+
+  .composer {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+  }
+
+  .field { margin-bottom: 1.1rem; }
+  .field:last-of-type { margin-bottom: 0; }
+
+  label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    margin-bottom: 0.4rem;
+  }
+
+  input[type="text"], textarea {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.7rem 0.85rem;
+    font: inherit;
+    color: var(--ink);
+  }
+
+  input[type="text"]:focus, textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  textarea {
+    min-height: 11rem;
+    resize: vertical;
+    line-height: 1.8;
+  }
+
+  .composer-foot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.9rem;
+    margin-top: 1.25rem;
+  }
+
+  .status {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    min-height: 1.2em;
+  }
+  .status[data-tone="ok"] { color: var(--accent-ink); }
+  .status[data-tone="error"] { color: #b0553f; }
+
+  button {
+    font: inherit;
+    font-weight: 600;
+    background: var(--accent);
+    color: var(--surface);
+    border: none;
+    border-radius: 999px;
+    padding: 0.65rem 1.5rem;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(1.06); }
+  button:disabled { opacity: 0.55; cursor: default; }
+  button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+
+  button.ghost {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.9rem;
+    font-weight: 500;
+  }
+
+  .list-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin: 2.75rem 0 1rem;
+  }
+  .list-head h2 {
+    font-family: "Zen Maru Gothic", "Noto Sans JP", sans-serif;
+    font-size: 1.05rem;
+    margin: 0;
+  }
+  .list-head .count {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .entries { display: flex; flex-direction: column; gap: 0.7rem; }
+
+  .entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .entry summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 0.9rem 1.1rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .entry summary::-webkit-details-marker { display: none; }
+
+  .entry-title {
+    font-weight: 600;
+    flex: 1;
+    min-width: 0;
+  }
+  .entry-date {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .entry[open] summary { border-bottom: 1px solid var(--border); }
+
+  .entry-body {
+    padding: 0.2rem 1.1rem 1.1rem;
+    white-space: pre-wrap;
+    color: var(--ink);
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0 1.1rem 0.9rem;
+    margin-top: -0.3rem;
+  }
+  .tag {
+    font-size: 0.75rem;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border-radius: 999px;
+    padding: 0.1rem 0.6rem;
+  }
+
+  .empty {
+    color: var(--ink-soft);
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+
+  .unavailable {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+  }
+
+  .gate {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1.25rem;
+    text-align: center;
+    padding: 1.5rem;
+    z-index: 10;
+  }
+  .gate h1 { font-size: 1.4rem; }
+  .gate p { color: var(--ink-soft); font-size: 0.9rem; max-width: 24rem; }
+  .gate button { font-size: 1rem; padding: 0.75rem 1.75rem; }
+</style>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Noto+Sans+JP:wght@400;500;600&display=swap">
+</head>
+<body>
+
+<div class="gate" id="authGate">
+  <p class="eyebrow">かきためノート</p>
+  <h1>Googleでログインして始める</h1>
+  <p>ログインすると、書いたメモがそのGoogleアカウントに紐づいて保存され、どの端末からでも同じメモを見られます。</p>
+  <button id="loginBtn">🔑 Googleでログイン</button>
+  <p class="status" id="gateStatus" role="status" aria-live="polite"></p>
+</div>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="email" id="userEmail"></span>
+    <button class="ghost" id="logoutBtn">ログアウト</button>
+  </div>
+
+  <p class="eyebrow">かきためノート</p>
+  <h1>思いついたときに、ひとこと書く</h1>
+  <p class="lede">
+    ここに書いたものは自動で保存されます。あとでまとめて記事にするので、うまくまとまっていなくて大丈夫です。
+  </p>
+
+  <form class="composer" id="composer">
+    <div class="field">
+      <label for="titleInput">見出し（空欄でもOK）</label>
+      <input type="text" id="titleInput" name="title" autocomplete="off" placeholder="例: 個別支援計画の面談で聞いたこと">
+    </div>
+    <div class="field">
+      <label for="tagsInput">タグ（カンマ区切り・任意）</label>
+      <input type="text" id="tagsInput" name="tags" autocomplete="off" placeholder="例: 学校, 療育">
+    </div>
+    <div class="field">
+      <label for="bodyInput">本文</label>
+      <textarea id="bodyInput" name="body" placeholder="今日あったこと、気づいたこと、調べたことなど…" required></textarea>
+    </div>
+    <div class="composer-foot">
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+      <button type="submit" id="saveBtn">保存する</button>
+    </div>
+  </form>
+
+  <div class="list-head">
+    <h2>これまでのメモ</h2>
+    <span class="count" id="entryCount"></span>
+  </div>
+  <div id="entries" class="entries"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyB3j4Sf0JVFDnBQDxge3EnA17hARnIUWno",
+    authDomain: "pecs-family.firebaseapp.com",
+    projectId: "pecs-family",
+    storageBucket: "pecs-family.firebasestorage.app",
+    messagingSenderId: "739244225472",
+    appId: "1:739244225472:web:6a8b0d912f600bc4698e25",
+  };
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const fbDb = firebase.firestore();
+
+  const gate = document.getElementById('authGate');
+  const gateStatus = document.getElementById('gateStatus');
+  const loginBtn = document.getElementById('loginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const userEmailEl = document.getElementById('userEmail');
+
+  const form = document.getElementById('composer');
+  const titleInput = document.getElementById('titleInput');
+  const tagsInput = document.getElementById('tagsInput');
+  const bodyInput = document.getElementById('bodyInput');
+  const saveBtn = document.getElementById('saveBtn');
+  const statusEl = document.getElementById('status');
+  const entriesEl = document.getElementById('entries');
+  const countEl = document.getElementById('entryCount');
+
+  let memosRef = null;
+  let memosUnsub = null;
+
+  function setStatus(el, text, tone) {
+    el.textContent = text;
+    if (tone) el.dataset.tone = tone;
+    else delete el.dataset.tone;
+  }
+
+  function formatDate(iso) {
+    try {
+      const d = new Date(iso);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch {
+      return '';
+    }
+  }
+
+  function renderEntries(docs) {
+    entriesEl.innerHTML = '';
+    countEl.textContent = docs.length ? `${docs.length}件` : '';
+
+    if (!docs.length) {
+      const empty = document.createElement('p');
+      empty.className = 'empty';
+      empty.textContent = 'まだメモがありません。上のフォームから最初の一言を書いてみましょう。';
+      entriesEl.appendChild(empty);
+      return;
+    }
+
+    for (const doc of docs) {
+      const data = doc.data();
+      if (!data) continue;
+
+      const entry = document.createElement('details');
+      entry.className = 'entry';
+
+      const summary = document.createElement('summary');
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'entry-title';
+      titleSpan.textContent = data.title || '無題';
+      const dateSpan = document.createElement('span');
+      dateSpan.className = 'entry-date';
+      dateSpan.textContent = formatDate(data.createdAt);
+      summary.appendChild(titleSpan);
+      summary.appendChild(dateSpan);
+      entry.appendChild(summary);
+
+      if (Array.isArray(data.tags) && data.tags.length) {
+        const tagsWrap = document.createElement('div');
+        tagsWrap.className = 'tags';
+        for (const t of data.tags) {
+          const chip = document.createElement('span');
+          chip.className = 'tag';
+          chip.textContent = `#${t}`;
+          tagsWrap.appendChild(chip);
+        }
+        entry.appendChild(tagsWrap);
+      }
+
+      const bodyDiv = document.createElement('div');
+      bodyDiv.className = 'entry-body';
+      bodyDiv.textContent = data.body || '';
+      entry.appendChild(bodyDiv);
+
+      entriesEl.appendChild(entry);
+    }
+  }
+
+  function startListening(uid) {
+    memosRef = fbDb.collection('users').doc(uid).collection('memos');
+    memosUnsub = memosRef.orderBy('createdAt', 'desc').limit(200).onSnapshot(
+      (snap) => renderEntries(snap.docs),
+      (err) => { console.error(err); setStatus(statusEl, '一覧の取得でエラーが起きました', 'error'); },
+    );
+  }
+
+  function stopListening() {
+    if (memosUnsub) { memosUnsub(); memosUnsub = null; }
+    memosRef = null;
+    entriesEl.innerHTML = '';
+    countEl.textContent = '';
+  }
+
+  loginBtn.addEventListener('click', () => {
+    setStatus(gateStatus, 'ログイン中…');
+    firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider())
+      .catch((e) => {
+        console.error(e);
+        setStatus(gateStatus, 'ログインエラー: ' + e.message, 'error');
+      });
+  });
+
+  logoutBtn.addEventListener('click', () => {
+    firebase.auth().signOut();
+  });
+
+  firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+      gate.hidden = true;
+      userEmailEl.textContent = user.email || '';
+      startListening(user.uid);
+    } else {
+      gate.hidden = false;
+      setStatus(gateStatus, '');
+      userEmailEl.textContent = '';
+      stopListening();
+    }
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!memosRef) return;
+
+    const body = bodyInput.value.trim();
+    if (!body) {
+      bodyInput.focus();
+      return;
+    }
+
+    const tags = tagsInput.value
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    saveBtn.disabled = true;
+    setStatus(statusEl, '保存中…');
+    try {
+      await memosRef.add({
+        title: titleInput.value.trim(),
+        tags,
+        body,
+        createdAt: new Date().toISOString(),
+      });
+      form.reset();
+      setStatus(statusEl, '保存しました', 'ok');
+      bodyInput.focus();
+    } catch (err) {
+      console.error(err);
+      setStatus(statusEl, '保存できませんでした。もう一度お試しください。', 'error');
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
