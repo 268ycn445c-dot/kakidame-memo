@@ -235,6 +235,14 @@
     color: var(--ink);
   }
 
+  .entry-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0 1.1rem 1rem;
+  }
+  button.danger { color: #b0553f; }
+
   .tags {
     display: flex;
     flex-wrap: wrap;
@@ -326,6 +334,7 @@
     </div>
     <div class="composer-foot">
       <p class="status" id="status" role="status" aria-live="polite"></p>
+      <button type="button" class="ghost" id="cancelEditBtn" hidden>やめる</button>
       <button type="submit" id="saveBtn">保存する</button>
     </div>
   </form>
@@ -366,9 +375,48 @@
   const statusEl = document.getElementById('status');
   const entriesEl = document.getElementById('entries');
   const countEl = document.getElementById('entryCount');
+  const cancelEditBtn = document.getElementById('cancelEditBtn');
 
   let memosRef = null;
   let memosUnsub = null;
+  let editingId = null;
+
+  function startEdit(id, data) {
+    editingId = id;
+    titleInput.value = data.title || '';
+    tagsInput.value = Array.isArray(data.tags) ? data.tags.join(', ') : '';
+    bodyInput.value = data.body || '';
+    saveBtn.textContent = '更新する';
+    cancelEditBtn.hidden = false;
+    setStatus(statusEl, '編集中です');
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    bodyInput.focus({ preventScroll: true });
+  }
+
+  function endEdit() {
+    editingId = null;
+    form.reset();
+    saveBtn.textContent = '保存する';
+    cancelEditBtn.hidden = true;
+  }
+
+  cancelEditBtn.addEventListener('click', () => {
+    endEdit();
+    setStatus(statusEl, '');
+  });
+
+  async function deleteMemo(id) {
+    if (!memosRef) return;
+    if (!confirm('このメモを削除しますか？（元に戻せません）')) return;
+    try {
+      await memosRef.doc(id).delete();
+      if (editingId === id) endEdit();
+      setStatus(statusEl, '削除しました', 'ok');
+    } catch (err) {
+      console.error(err);
+      setStatus(statusEl, '削除できませんでした。もう一度お試しください。', 'error');
+    }
+  }
 
   function setStatus(el, text, tone) {
     el.textContent = text;
@@ -433,6 +481,22 @@
       bodyDiv.textContent = data.body || '';
       entry.appendChild(bodyDiv);
 
+      const actions = document.createElement('div');
+      actions.className = 'entry-actions';
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'ghost';
+      editBtn.textContent = '✏️ 編集';
+      editBtn.addEventListener('click', () => startEdit(doc.id, data));
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'ghost danger';
+      delBtn.textContent = '🗑 削除';
+      delBtn.addEventListener('click', () => deleteMemo(doc.id));
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      entry.appendChild(actions);
+
       entriesEl.appendChild(entry);
     }
   }
@@ -447,6 +511,7 @@
 
   function stopListening() {
     if (memosUnsub) { memosUnsub(); memosUnsub = null; }
+    endEdit();
     memosRef = null;
     entriesEl.innerHTML = '';
     countEl.textContent = '';
@@ -489,21 +554,31 @@
     }
 
     const tags = tagsInput.value
-      .split(',')
+      .split(/[,、，]/)
       .map((s) => s.trim())
       .filter(Boolean);
 
     saveBtn.disabled = true;
     setStatus(statusEl, '保存中…');
     try {
-      await memosRef.add({
-        title: titleInput.value.trim(),
-        tags,
-        body,
-        createdAt: new Date().toISOString(),
-      });
-      form.reset();
-      setStatus(statusEl, '保存しました', 'ok');
+      const wasEditing = !!editingId;
+      if (wasEditing) {
+        await memosRef.doc(editingId).update({
+          title: titleInput.value.trim(),
+          tags,
+          body,
+          updatedAt: new Date().toISOString(),
+        });
+      } else {
+        await memosRef.add({
+          title: titleInput.value.trim(),
+          tags,
+          body,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      endEdit();
+      setStatus(statusEl, wasEditing ? '更新しました' : '保存しました', 'ok');
       bodyInput.focus();
     } catch (err) {
       console.error(err);
