@@ -277,6 +277,44 @@
     font-size: 0.9rem;
   }
 
+  .list-tools { display: flex; align-items: center; gap: 0.6rem; }
+
+  .export-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    background: var(--accent-soft);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.9rem;
+    font-size: 0.85rem;
+    color: var(--accent-ink);
+  }
+  .export-bar .export-actions { display: flex; gap: 0.5rem; }
+  .export-bar button { padding: 0.45rem 1.1rem; font-size: 0.85rem; }
+
+  .pick {
+    width: 1.15rem;
+    height: 1.15rem;
+    margin: 0;
+    flex: none;
+    align-self: center;
+    accent-color: var(--accent);
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--accent-ink);
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    padding: 0 0.5rem;
+    white-space: nowrap;
+    align-self: center;
+  }
+
   .gate {
     position: fixed;
     inset: 0;
@@ -341,7 +379,17 @@
 
   <div class="list-head">
     <h2>これまでのメモ</h2>
-    <span class="count" id="entryCount"></span>
+    <div class="list-tools">
+      <span class="count" id="entryCount"></span>
+      <button type="button" class="ghost" id="exportModeBtn">📤 HP用に選ぶ</button>
+    </div>
+  </div>
+  <div class="export-bar" id="exportBar" hidden>
+    <span id="exportInfo">HPに載せたいメモにチェックを入れてください</span>
+    <div class="export-actions">
+      <button type="button" class="ghost" id="exportCancelBtn">やめる</button>
+      <button type="button" id="exportBtn" disabled>書き出す</button>
+    </div>
   </div>
   <div id="entries" class="entries"></div>
 </div>
@@ -377,9 +425,76 @@
   const countEl = document.getElementById('entryCount');
   const cancelEditBtn = document.getElementById('cancelEditBtn');
 
+  const exportModeBtn = document.getElementById('exportModeBtn');
+  const exportBar = document.getElementById('exportBar');
+  const exportInfo = document.getElementById('exportInfo');
+  const exportBtn = document.getElementById('exportBtn');
+  const exportCancelBtn = document.getElementById('exportCancelBtn');
+
   let memosRef = null;
   let memosUnsub = null;
   let editingId = null;
+  let lastDocs = [];
+  let exportMode = false;
+  const picked = new Set();
+
+  function updateExportBar() {
+    exportBtn.disabled = picked.size === 0;
+    exportInfo.textContent = picked.size
+      ? `${picked.size}件えらんでいます`
+      : 'HPに載せたいメモにチェックを入れてください';
+  }
+
+  function setExportMode(on) {
+    exportMode = on;
+    picked.clear();
+    exportBar.hidden = !on;
+    exportModeBtn.hidden = on;
+    updateExportBar();
+    renderEntries(lastDocs);
+  }
+
+  exportModeBtn.addEventListener('click', () => setExportMode(true));
+  exportCancelBtn.addEventListener('click', () => setExportMode(false));
+
+  // 選んだメモを JSON ファイルにして保存する。
+  // このファイルを hattatsu-info の `npm run import-memos` で記事の下書きに変える。
+  exportBtn.addEventListener('click', async () => {
+    const chosen = lastDocs.filter((d) => picked.has(d.id));
+    if (!chosen.length) return;
+    const memos = chosen.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        title: data.title || '',
+        tags: Array.isArray(data.tags) ? data.tags : [],
+        body: data.body || '',
+        createdAt: data.createdAt || '',
+      };
+    });
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+    const blob = new Blob([JSON.stringify({ exportedAt: now.toISOString(), memos }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `kakidame-export-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+
+    // 書き出し済みの印をつける（一覧に「HP済」と出る）
+    try {
+      const batch = fbDb.batch();
+      for (const m of memos) batch.update(memosRef.doc(m.id), { exportedAt: now.toISOString() });
+      await batch.commit();
+    } catch (err) {
+      console.error(err);
+    }
+    setExportMode(false);
+    setStatus(statusEl, `${memos.length}件を書き出しました`, 'ok');
+  });
 
   function startEdit(id, data) {
     editingId = id;
@@ -435,6 +550,7 @@
   }
 
   function renderEntries(docs) {
+    lastDocs = docs;
     entriesEl.innerHTML = '';
     countEl.textContent = docs.length ? `${docs.length}件` : '';
 
@@ -454,6 +570,20 @@
       entry.className = 'entry';
 
       const summary = document.createElement('summary');
+      if (exportMode) {
+        const pick = document.createElement('input');
+        pick.type = 'checkbox';
+        pick.className = 'pick';
+        pick.checked = picked.has(doc.id);
+        pick.setAttribute('aria-label', `${data.title || '無題'} をえらぶ`);
+        pick.addEventListener('click', (e) => e.stopPropagation());
+        pick.addEventListener('change', () => {
+          if (pick.checked) picked.add(doc.id);
+          else picked.delete(doc.id);
+          updateExportBar();
+        });
+        summary.appendChild(pick);
+      }
       const titleSpan = document.createElement('span');
       titleSpan.className = 'entry-title';
       titleSpan.textContent = data.title || '無題';
@@ -461,6 +591,13 @@
       dateSpan.className = 'entry-date';
       dateSpan.textContent = formatDate(data.createdAt);
       summary.appendChild(titleSpan);
+      if (data.exportedAt) {
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.textContent = 'HP済';
+        badge.title = `書き出した日: ${formatDate(data.exportedAt)}`;
+        summary.appendChild(badge);
+      }
       summary.appendChild(dateSpan);
       entry.appendChild(summary);
 
@@ -512,6 +649,8 @@
   function stopListening() {
     if (memosUnsub) { memosUnsub(); memosUnsub = null; }
     endEdit();
+    if (exportMode) setExportMode(false);
+    lastDocs = [];
     memosRef = null;
     entriesEl.innerHTML = '';
     countEl.textContent = '';
