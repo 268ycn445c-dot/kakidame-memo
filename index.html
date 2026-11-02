@@ -315,6 +315,40 @@
     align-self: center;
   }
 
+  .body-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-bottom: 0.4rem;
+  }
+  .body-label-row label { margin: 0; }
+
+  button.mic {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    padding: 0.45rem 1rem;
+    font-size: 0.9rem;
+  }
+  button.mic[aria-pressed="true"] {
+    background: #b0553f;
+    color: #fff;
+    animation: mic-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes mic-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(176, 85, 63, 0.45); }
+    50% { box-shadow: 0 0 0 8px rgba(176, 85, 63, 0); }
+  }
+
+  .mic-status {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 0.4rem 0.7rem;
+  }
+
   .gate {
     position: fixed;
     inset: 0;
@@ -367,7 +401,11 @@
       <input type="text" id="tagsInput" name="tags" autocomplete="off" placeholder="例: 学校, 療育">
     </div>
     <div class="field">
-      <label for="bodyInput">本文</label>
+      <div class="body-label-row">
+        <label for="bodyInput">本文</label>
+        <button type="button" class="mic" id="micBtn" hidden>🎤 声で入力</button>
+      </div>
+      <p class="mic-status" id="micStatus" role="status" aria-live="polite" hidden></p>
       <textarea id="bodyInput" name="body" placeholder="今日あったこと、気づいたこと、調べたことなど…" required></textarea>
     </div>
     <div class="composer-foot">
@@ -419,6 +457,81 @@
   const titleInput = document.getElementById('titleInput');
   const tagsInput = document.getElementById('tagsInput');
   const bodyInput = document.getElementById('bodyInput');
+  const micBtn = document.getElementById('micBtn');
+  const micStatus = document.getElementById('micStatus');
+
+  // --- 声で入力（ブラウザの音声認識。使えないブラウザではボタンを出さない） ---
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null;
+  let listening = false;
+
+  function showMicStatus(text) {
+    micStatus.textContent = text;
+    micStatus.hidden = !text;
+  }
+
+  function appendToBody(text) {
+    const cur = bodyInput.value;
+    const sep = cur && !/\n$/.test(cur) ? '\n' : '';
+    bodyInput.value = cur + sep + text;
+    bodyInput.scrollTop = bodyInput.scrollHeight;
+  }
+
+  function stopMic() {
+    listening = false;
+    micBtn.setAttribute('aria-pressed', 'false');
+    micBtn.textContent = '🎤 声で入力';
+    if (rec) { try { rec.stop(); } catch {} }
+  }
+
+  if (SpeechRec) {
+    micBtn.hidden = false;
+    micBtn.setAttribute('aria-pressed', 'false');
+    micBtn.addEventListener('click', () => {
+      if (listening) { stopMic(); return; }
+      rec = new SpeechRec();
+      rec.lang = 'ja-JP';
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.onresult = (e) => {
+        let interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i];
+          if (r.isFinal) appendToBody(r[0].transcript.trim());
+          else interim += r[0].transcript;
+        }
+        showMicStatus(interim ? `きいています…「${interim}」` : 'きいています…話してください');
+      };
+      rec.onerror = (e) => {
+        const msg = {
+          'not-allowed': 'マイクが使えません。ブラウザの設定でマイクを「許可」にしてください。',
+          'service-not-allowed': '音声入力が使えません。iPhoneは「設定 → 一般 → キーボード → 音声入力」をオンにしてください。',
+          'no-speech': '声が聞こえませんでした。もう一度押して話してください。',
+          'network': '通信がうまくいきませんでした。電波のよいところでもう一度どうぞ。',
+        }[e.error] || '音声入力でエラーが起きました。もう一度お試しください。';
+        stopMic();
+        showMicStatus(msg);
+      };
+      rec.onend = () => {
+        if (listening) {
+          // 少し黙ると自動で止まるブラウザがあるので、押している間はつづける
+          try { rec.start(); return; } catch {}
+        }
+        stopMic();
+        if (micStatus.textContent.startsWith('きいて')) showMicStatus('');
+      };
+      try {
+        rec.start();
+        listening = true;
+        micBtn.setAttribute('aria-pressed', 'true');
+        micBtn.textContent = '⏹ とめる';
+        showMicStatus('きいています…話してください');
+      } catch (err) {
+        console.error(err);
+        showMicStatus('音声入力を始められませんでした。');
+      }
+    });
+  }
   const saveBtn = document.getElementById('saveBtn');
   const statusEl = document.getElementById('status');
   const entriesEl = document.getElementById('entries');
@@ -685,6 +798,7 @@
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!memosRef) return;
+    if (listening) { stopMic(); showMicStatus(''); }
 
     const body = bodyInput.value.trim();
     if (!body) {
